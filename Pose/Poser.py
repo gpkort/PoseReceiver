@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from Pose.PoseModel import ModelData
+import json
 
 KERNEL = (3, 3)
 SIGMA_X = 0
@@ -8,6 +9,41 @@ SIGMA_Y = 0
 THRESHOLD = 0.1
 N_INTERP_SAMPLES = 10
 CONFIDENCE_THRESHOLD = 0.7
+
+
+class Point:
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+
+    def to_json(self) -> str:
+        json.dumps(self, default=lambda x: x.__dict__)
+
+
+class PoseVector:
+    def __init__(self, start: Point, end: Point):
+        self.start = start
+        self.end = end
+
+    def to_json(self) -> str:
+        json.dumps(self, default=lambda x: x.__dict__)
+
+
+class PoseVectors:
+    def __init__(self, height: int, width: int):
+        self.image_height = height
+        self.image_width = width
+        self.vectors = list()
+
+    def to_json(self) -> str:
+        json.dumps(self, default=lambda x: x.__dict__)
+
+    def add_point(self, vec: PoseVector):
+        self.vectors.append(vec)
+
+
+def keypoints_to_json(person_key_points, key_points_list, pose_pairs: list):
+    pass
 
 
 class PoseCalculator:
@@ -19,8 +55,7 @@ class PoseCalculator:
         self.key_point_list = np.zeros((0, 3))
 
     def get_plottable_key_points(self) -> np.ndarray:
-        dkp, kl = self.get_detected_key_points()
-        print(f"KL = {kl}")
+        self.get_detected_key_points()
         valid, invalid = self.get_valid_pairs()
         return self.get_personwise_key_points(valid, invalid)
 
@@ -30,13 +65,12 @@ class PoseCalculator:
         for part in range(self.model_info.num_of_kp):
             prob_map = self.model_output[0, part, :, :]
             prob_map = cv2.resize(prob_map, (self.image.shape[1], self.image.shape[0]))
-            keypoints = self.get_key_points(prob_map)
-            # print("Keypoints - {} : {}".format(self.model_info.key_points[part], keypoints))
+            key_points = self.get_key_points(prob_map)
 
             keypoints_with_id = []
-            for i in range(len(keypoints)):
-                keypoints_with_id.append(keypoints[i] + (keypoint_id,))
-                self.key_point_list = np.vstack([self.key_point_list, keypoints[i]])
+            for kp in key_points:  # for i in range(len(key_points)):
+                keypoints_with_id.append(kp + (keypoint_id,))
+                self.key_point_list = np.vstack([self.key_point_list, kp])
                 keypoint_id += 1
 
             self.detected_key_points.append(keypoints_with_id)
@@ -46,6 +80,7 @@ class PoseCalculator:
     def get_key_points(self, prob_map: np.ndarray) -> list:
         map_smooth = cv2.GaussianBlur(prob_map, KERNEL, SIGMA_X, 0)
         map_mask = np.uint8(map_smooth > THRESHOLD)
+
         key_points = []
         contours, _ = cv2.findContours(map_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -127,28 +162,27 @@ class PoseCalculator:
 
     def get_personwise_key_points(self, valid_pairs, invalid_pairs) -> np.ndarray:
         # the last number in each row is the overall score
-        print(valid_pairs)
-        personwiseKeypoints = -1 * np.ones((0, 19))
+
+        person_key_points = -1 * np.ones((0, 19))
 
         for k in range(len(self.model_info.map_index)):
             if k not in invalid_pairs:
-                partAs = valid_pairs[k][:,0]
-                partBs = valid_pairs[k][:,1]
+                partAs = valid_pairs[k][:, 0]
+                partBs = valid_pairs[k][:, 1]
                 indexA, indexB = np.array(self.model_info.pose_pairs[k])
 
                 for i in range(len(valid_pairs[k])):
                     found = 0
                     person_idx = -1
-                    for j in range(len(personwiseKeypoints)):
-                        print(f"p: {personwiseKeypoints[j][indexA]} == {partAs[i]}")
-                        if personwiseKeypoints[j][indexA] == partAs[i]:
+                    for j in range(len(person_key_points)):
+                        if person_key_points[j][indexA] == partAs[i]:
                             person_idx = j
                             found = 1
                             break
 
                     if found:
-                        personwiseKeypoints[person_idx][indexB] = partBs[i]
-                        personwiseKeypoints[person_idx][-1] += (
+                        person_key_points[person_idx][indexB] = partBs[i]
+                        person_key_points[person_idx][-1] += (
                                 self.key_point_list[partBs[i].astype(int), 2] + valid_pairs[k][i][2])
 
                     # if find no partA in the subset, create a new subset
@@ -157,6 +191,6 @@ class PoseCalculator:
                         row[indexA] = partAs[i]
                         row[indexB] = partBs[i]
                         # add the keypoint_scores for the two keypoints and the paf_score
-                        row[-1] = sum(self.key_point_list[valid_pairs[k][i,:2].astype(int), 2]) + valid_pairs[k][i][2]
-                        personwiseKeypoints = np.vstack([personwiseKeypoints, row])
-        return personwiseKeypoints
+                        row[-1] = sum(self.key_point_list[valid_pairs[k][i, :2].astype(int), 2]) + valid_pairs[k][i][2]
+                        person_key_points = np.vstack([person_key_points, row])
+        return person_key_points

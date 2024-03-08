@@ -43,6 +43,7 @@ def getKeypoints(probMap, threshold=0.1):
     mapSmooth = cv2.GaussianBlur(probMap,(3, 3), 0,0)
 
     mapMask = np.uint8(mapSmooth > threshold)
+
     keypoints = []
 
     #find the blobs
@@ -222,7 +223,6 @@ for i in range(nPoints):
 cv2.imshow("Keypoints",frameClone)
 
 valid_pairs, invalid_pairs = getValidPairs(output)
-print(f"Valid: {len(valid_pairs)}, Invalid: {len(invalid_pairs)}")
 personwiseKeypoints = getPersonwiseKeypoints(valid_pairs, invalid_pairs)
 print(f"pkw: {personwiseKeypoints.shape}")
 

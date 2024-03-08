@@ -49,7 +49,7 @@ class NetworkModel:
         self._network = None
         self._net_blob = None
 
-    def init_network(self, backend: ModelBackend = ModelBackend.GPU):
+    def init_network(self, backend: ModelBackend = ModelBackend.CPU):
 
         self._network = cv2.dnn.readNetFromCaffe(self._proto_file, self._caffe_file)
         if backend == ModelBackend.CPU:
@@ -61,12 +61,12 @@ class NetworkModel:
     def get_output(self,
                    image: np.ndarray,
                    aspect_height: int = 368,
-                   scale: float = pow(255, -1),
+                   scale: float = 1.0 / 255.0,
                    mean: tuple = (0, 0, 0),
                    swapRB=False,
                    crop=False) -> np.ndarray:
 
-        output = None
+        output = None # inWidth = int((inHeight/frameHeight)*frameWidth)
         if self._network is not None:
             aspect_width = int((aspect_height / image.shape[0]) * image.shape[1])
             self._net_blob = cv2.dnn.blobFromImage(image, scale, (aspect_width, aspect_height),
