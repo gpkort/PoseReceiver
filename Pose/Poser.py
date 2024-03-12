@@ -29,21 +29,38 @@ class PoseVector:
         json.dumps(self, default=lambda x: x.__dict__)
 
 
-class PoseVectors:
+class PoseVectorCollection:
     def __init__(self, height: int, width: int):
         self.image_height = height
         self.image_width = width
         self.vectors = list()
 
     def to_json(self) -> str:
-        json.dumps(self, default=lambda x: x.__dict__)
+        return json.dumps(self, default=lambda x: x.__dict__)
 
     def add_point(self, vec: PoseVector):
         self.vectors.append(vec)
 
 
-def keypoints_to_json(person_key_points, key_points_list, pose_pairs: list):
-    pass
+def keypoints_to_json(kp_list: np.ndarray, pose_pairs: list, pk_points: np.ndarray, background: np.ndarray) -> str:
+    pv = PoseVectorCollection(int(background.shape[0]),
+                              int(background.shape[1]))
+
+    for i in range(17):
+        for n in range(len(pk_points)):
+            index = pk_points[n][np.array(pose_pairs[i])]
+
+            if -1 in index:
+                continue
+            b = np.int32(kp_list[index.astype(int), 0])
+            a = np.int32(kp_list[index.astype(int), 1])
+            pv.add_point(vec=PoseVector(
+                start=Point(x=int(b[0]), y=int(a[0])),
+                end=Point(x=int(b[1]), y=int(a[1]))
+            )
+            )
+
+    return pv.to_json()
 
 
 class PoseCalculator:

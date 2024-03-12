@@ -4,7 +4,7 @@ import models.coco.pairs as coco
 import models.body_25.pairs as body
 import matplotlib.pyplot as plt
 from Pose.PoseModel import NetworkModel
-from Pose.Poser import PoseCalculator
+from Pose.Poser import PoseCalculator, keypoints_to_json
 
 colors = [[0, 100, 255], [0, 100, 255], [0, 255, 255], [0, 100, 255], [0, 255, 255], [0, 100, 255],
           [0, 255, 0], [255, 200, 100], [255, 0, 255], [0, 255, 0], [255, 200, 100], [255, 0, 255],
@@ -41,5 +41,12 @@ def draw_lines(kp_list: np.ndarray, pose_pairs: list, pk_points: np.ndarray, bac
 if __name__ == '__main__':
     print("Whazzzup World")
     print(f"shape {output.shape}")
-    print(f"plottable {person_key_points.shape}")
-    draw_lines(calculator.key_point_list, coco.COCO_MODEL.pose_pairs, person_key_points, frameClone)
+    print(f"plottable {person_key_points[:2]}")
+
+    test = [1, 2, 3, 4, 5, 6, 7, 8]
+    print(test[0:-1])
+    js = keypoints_to_json(calculator.key_point_list, coco.COCO_MODEL.pose_pairs, person_key_points, frameClone)
+    print(js)
+
+
+    # draw_lines(calculator.key_point_list, coco.COCO_MODEL.pose_pairs, person_key_points, frameClone)
